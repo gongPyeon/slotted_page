@@ -68,7 +68,7 @@ uint64_t page::find(char *key){
 			return stored_val; 
 		}
 	}
-	printf("\n");
+	//printf("\n");
 	return 0;
 }
 
@@ -79,8 +79,8 @@ bool page::insert(char *key,uint64_t val){
 	uint16_t record_size = 2 + strlen(key) + 1 + sizeof(val);
 	//printf("strlen : %d, sizeof : %d, record_size : %lu\n", strlen(key), sizeof(val), record_size);
 
-	short record_off = hdr.get_data_region_off() - record_size;
-	//printf("record_off :%d\n", record_off); 
+	short record_off = (hdr.get_data_region_off()+1) - record_size;
+	//printf("record_off :%d %d\n", record_off, hdr.get_data_region_off()); 
 
 	if (is_full(record_size) || record_off < 0) { 
 		return false;	
@@ -112,7 +112,7 @@ bool page::insert(char *key,uint64_t val){
 
 	if(metadata == 0){ //처음 추가하는 것일때
 		uint16_t* offset_ptr = (uint16_t*)((uint64_t)offset_array + metadata * sizeof(uint16_t));
-		*offset_ptr = record_off;
+		*offset_ptr = record_off; //그다음 넣을 수 있는 공간을 가리킨다
 	}else{ // 처음 추가하는게 아닐때
 		for(int i = metadata-1; i >= 0; i--){ 
 		off= *(uint16_t *)((uint64_t)offset_array+i*2);	
@@ -150,7 +150,7 @@ bool page::insert(char *key,uint64_t val){
 
 
 	hdr.set_num_data(metadata + 1); 
-	hdr.set_data_region_off(record_off);
+	hdr.set_data_region_off(record_off-1);
 
 	print();
 
@@ -166,11 +166,13 @@ page* page::split(char *key, uint64_t val, char** parent_key){
 bool page::is_full(uint64_t inserted_record_size) {
 	// Please implement this function in project 2.
 
-	uint64_t total_space = PAGE_SIZE;
+	uint64_t total_space = PAGE_SIZE; // 1부터 256까지의 방
 	//printf("***\n");
-	uint64_t used_space = sizeof(slot_header) + sizeof(page*) + (PAGE_SIZE-1-sizeof(page*) - hdr.get_data_region_off()) + (hdr.get_num_data() * 2) + 1;
+	uint64_t record_size = PAGE_SIZE-1-sizeof(page*) - hdr.get_data_region_off();
+
+	uint64_t used_space = sizeof(slot_header) + sizeof(page*) + record_size + (hdr.get_num_data() * 2);
 	// header + page* + record + offset배열
-	// printf("used space : %lu\n", used_space);
+	//printf("used space : %lu\n", record_size);
 	//printf("***\n");
 
 	if ((total_space - used_space) < inserted_record_size + 2)
