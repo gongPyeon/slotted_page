@@ -56,8 +56,7 @@ uint64_t page::find(char *key){
 	char* stored_key = nullptr;
 	char* pre_key = nullptr;
 	uint64_t stored_val = 0;
-
-	page* child = nullptr;
+	uint64_t child_addr = 0;
 
 	for (int i = 0; i < num_data; i++) {
 		off = *(uint16_t*)((uint64_t)offset_array + i * 2);
@@ -69,8 +68,8 @@ uint64_t page::find(char *key){
 			return stored_val; 
 		}else if(strcmp(stored_key, key) > 0){ // 찾고자 하는 키보다 큰 키를 만날 경우
 			if(this->get_type() == INTERNAL){ // INTERNAL
-				child = (page*)get_val((void*)pre_key); // child 주소를 알아낸다
-				child->find(key);
+				child_addr = get_val((void*)pre_key); // child 주소를 알아낸다
+				return child_addr;
 			}
 		}
 
@@ -164,6 +163,8 @@ bool page::insert(char *key, uint64_t val){
 page* page::split(char *key, uint64_t val, char** parent_key){
 	// Please implement this function in project 3.
 	
+	this->insert(key, val); // key, val 삽입
+
 	// 새로운 노드에 절반의 엔트리를 복사
 	page *new_page = new page(get_type()); 
 	int num_data = hdr.get_num_data(); 
@@ -188,11 +189,11 @@ page* page::split(char *key, uint64_t val, char** parent_key){
 	// 기존 노드의 절반을 삭제
 	defrag();
 
-	// parent_key에 medium 값 주소를 추가한다
+	// parent_key에 medium번째 key를 추가한다
 	off = *(uint16_t *)((uint64_t)offset_array + medium * 2);
     data_region = (void *)((uint64_t)this + (uint64_t)off);
     *parent_key = get_key(data_region);
-	//
+
 
 	// 새로 생긴 노드의 주소를 리턴
 	return new_page;
