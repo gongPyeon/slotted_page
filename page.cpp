@@ -54,18 +54,27 @@ uint64_t page::find(char *key){
 	void* offset_array = hdr.get_offset_array();
 	void* data_region = nullptr;
 	char* stored_key = nullptr;
+	char* pre_key = nullptr;
 	uint64_t stored_val = 0;
+
+	page* child = nullptr;
 
 	for (int i = 0; i < num_data; i++) {
 		off = *(uint16_t*)((uint64_t)offset_array + i * 2);
 		data_region = (void*)((uint64_t)this + (uint64_t)off);
-		record_size = get_record_size(data_region);
 		stored_key = get_key(data_region);
 		stored_val = get_val((void*)stored_key);
 	
 		if (strcmp(stored_key, key) == 0) { 
 			return stored_val; 
+		}else if(strcmp(stored_key, key) > 0){ // 찾고자 하는 키보다 큰 키를 만날 경우
+			if(this->get_type() == INTERNAL){ // INTERNAL
+				child = (page*)get_val((void*)pre_key); // child 주소를 알아낸다
+				child->find(key);
+			}
 		}
+
+		pre_key = get_key(data_region); // 이전 키 저장
 	}
 
 	return 0;

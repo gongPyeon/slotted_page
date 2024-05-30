@@ -14,7 +14,10 @@ void btree::insert(char *key, uint64_t val){
 	page *current = root;
     page *parent = nullptr;
 
-    // leaf로 내려간다 ?
+    // insert할 페이지를 어떻게 찾지?
+	while(current->get_type() != LEAF){
+
+	}
 
 	if(sizeof(parent_key) < DEGREE * 2 - 1){ // 50% 이하로 데이터가 채워져있을 땐 바로 삽입한다
 		root->insert(key, val);
@@ -42,19 +45,15 @@ void btree::insert(char *key, uint64_t val){
 
 }
 
-uint64_t btree::lookup(char *key){
+uint64_t btree::lookup(char *key){ // 처음엔 b+트리에서 header를 어떻게 접근할지 고민했다 => find함수를 사용하면 된다는 것을 나중에 발견함
 	// Please implement this function in project 3.
 
-	page* btree_node = root; // root 노드 설정
-	page* child_addr = nullptr;
+	page* current = root; // root 노드 설정
 
-	while (btree_node != nullptr) { // null이면 더이상 leaf가 없는 것이기 때문
-		
-		uint64_t stored_val = btree_node->find(key);
-			if (stored_val == 0) { // key를 못찾았으면
-				return 0;
-			}else{
-				child_addr = (page*)stored_val;
-			}
-		}
+	uint64_t stored_val = current->find(key);
+	if (stored_val == 0) { // key를 못찾았으면
+		return 0;
+	}else{
+		return stored_val;
+	}
 }
