@@ -163,7 +163,7 @@ bool page::insert(char *key, uint64_t val){
 page* page::split(char *key, uint64_t val, char** parent_key){
 	// Please implement this function in project 3.
 	
-	this->insert(key, val); // key, val 삽입
+	if(!this->insert(key, val)) return NULL; // key, val insert 후 분할
 
 	// 새로운 노드에 절반의 엔트리를 복사
 	page *new_page = new page(get_type()); 
@@ -194,7 +194,7 @@ page* page::split(char *key, uint64_t val, char** parent_key){
     data_region = (void *)((uint64_t)this + (uint64_t)off);
     *parent_key = get_key(data_region);
 
-
+	print();
 	// 새로 생긴 노드의 주소를 리턴
 	return new_page;
 }
