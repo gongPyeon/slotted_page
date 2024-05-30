@@ -2,6 +2,7 @@
 #include <iostream> 
 #include <cstring> 
 
+//202211394 편강
 void put2byte(void *dest, uint16_t data){ 
 	*(uint16_t*)dest = data;
 }
@@ -46,7 +47,7 @@ page *page::get_leftmost_ptr(){
 
 uint64_t page::find(char *key){
 	// Please implement this function in project 2.
-	//printf("\n\nfind\n");
+
 	uint32_t num_data = hdr.get_num_data();
 	uint16_t off = 0;
 	uint16_t record_size = 0;
@@ -61,96 +62,90 @@ uint64_t page::find(char *key){
 		record_size = get_record_size(data_region);
 		stored_key = get_key(data_region);
 		stored_val = get_val((void*)stored_key);
-		//printf("***key : %s\n", key);
-		//printf("off : %d, record_size : %d, stored_key : %s, stored_val : %d\n",off, record_size, stored_key, stored_val);
-		//printf("strcmp : %d\n",strcmp(stored_key, key));
+	
 		if (strcmp(stored_key, key) == 0) { 
 			return stored_val; 
 		}
 	}
-	//printf("\n");
+
 	return 0;
 }
 
-bool page::insert(char *key,uint64_t val){
+bool page::insert(char *key, uint64_t val){
 	// Please implement this function in project 2.
 
-	//printf("\n\ninsert key: %s, valL %d\n", key, val);
-	uint16_t record_size = 2 + strlen(key) + 1 + sizeof(val);
-	//printf("strlen : %d, sizeof : %d, record_size : %lu\n", strlen(key), sizeof(val), record_size);
+	uint16_t record_size = 2 + strlen(key) + 1 + sizeof(val); // record size 계산
+	short record_off = (hdr.get_data_region_off()+1) - record_size; // (freelist의 마지막 + 1) - record size = offset 계산
 
-	short record_off = (hdr.get_data_region_off()+1) - record_size;
-	//printf("record_off :%d %d\n", record_off, hdr.get_data_region_off()); 
 
-	if (is_full(record_size) || record_off < 0) { 
+	if (is_full(record_size) || record_off < 0) { // full인지 확인
 		return false;	
 	}
 
-	//printf("hdr : %d this : %d\n",sizeof(slot_header), sizeof(this));
-	uint16_t* record_s = (uint16_t*)((uint64_t)this + (uint64_t)record_off); 
+	uint16_t* record_s = (uint16_t*)((uint64_t)this + (uint64_t)record_off); // size 넣기
 	*record_s = record_size;
-	//printf("record_s : %lu\n", *record_s);
-
-	char* record_key = (char*)((uint64_t)this + (uint64_t)record_off + sizeof(uint16_t)); 
+	char* record_key = (char*)((uint64_t)this + (uint64_t)record_off + sizeof(uint16_t)); // key 넣기
 	memcpy(record_key, key, strlen(key) + 1);
-	//printf("record_key : %s\n", record_key);
-	//printf("record_key : %c\n", *record_key);
-	
-	// uint64_t* record_val = (uint64_t*)((uint64_t)key+(uint64_t)strlen((char*)key)+1);
-	uint64_t* record_val = (uint64_t*)((uint64_t)this + (uint64_t)record_off + sizeof(uint16_t) + strlen(key) + 1); 
+	uint64_t* record_val = (uint64_t*)((uint64_t)this + (uint64_t)record_off + sizeof(uint16_t) + strlen(key) + 1); // val 넣기
 	*record_val = val;
-	//printf("record_val : %lu\n\n", *record_val2);
 	
 
 	void* offset_array = hdr.get_offset_array();
-	uint32_t metadata = hdr.get_num_data();
+	uint32_t metadata = hdr.get_num_data(); // data의 개수
+
+
 
 	/*정렬하는 부분*/
+
 	void *pre=nullptr; 
 	uint16_t off=0; 
 	void *data_region=nullptr;
 
 	if(metadata == 0){ //처음 추가하는 것일때
+
 		uint16_t* offset_ptr = (uint16_t*)((uint64_t)offset_array + metadata * sizeof(uint16_t));
 		*offset_ptr = record_off; //그다음 넣을 수 있는 공간을 가리킨다
-	}else{ // 처음 추가하는게 아닐때
-		for(int i = metadata-1; i >= 0; i--){ 
-		off= *(uint16_t *)((uint64_t)offset_array+i*2);	
-		data_region = (void *)((uint64_t)this+(uint64_t)off); 
-		pre = get_key(data_region);
-		//printf("pre : %s\n\n", (char*)pre);
-		if(strcmp((char*)pre, key) <= 0 || i==0) {// key값이 같거나 크기 또는 i=0일 때
-			uint16_t* offset_ptr = nullptr;
-			//printf("strcmp: %d\n", strcmp((char*)pre, key));
-			if(i == 0 && strcmp((char*)pre, key) > 0){// 맨 첫번째에 들어가야할 때
-				for(int j = metadata-1; j>=i; j--){
-					off= *(uint16_t *)((uint64_t)offset_array + j * sizeof(uint16_t));	
-					uint16_t* offset_move = (uint16_t*)((uint64_t)offset_array + (j+1) * sizeof(uint16_t));
-					*offset_move = off;
-				}
-				offset_ptr = (uint16_t*)((uint64_t)offset_array + i * sizeof(uint16_t));
-			}else{ // 중간 또는 끝에 들어가야할 때
-				for(int j = metadata-1; j>i; j--){
-					off= *(uint16_t *)((uint64_t)offset_array + j * sizeof(uint16_t));	
-					uint16_t* offset_move = (uint16_t*)((uint64_t)offset_array + (j+1) * sizeof(uint16_t));
-					*offset_move = off;
-				}
-				offset_ptr = (uint16_t*)((uint64_t)offset_array + (i+1) * sizeof(uint16_t));
-			}
-			*offset_ptr = record_off;
 
-			break;
-		}
+	}else{ // 처음 추가하는게 아닐때
+
+		for(int i = metadata-1; i >= 0; i--){ //정렬된 순서이므로 큰쪽부터 확인한다
+
+			off= *(uint16_t *)((uint64_t)offset_array+i*2);	
+			data_region = (void *)((uint64_t)this+(uint64_t)off); 
+			pre = get_key(data_region);
+			
+			if(strcmp((char*)pre, key) <= 0 || i==0) {// key값이 같거나 크기 또는 i=0일 때
+				uint16_t* offset_ptr = nullptr;
+				
+				if(i == 0 && strcmp((char*)pre, key) > 0){// 맨 첫번째에 들어가야할 때
+
+					for(int j = metadata-1; j>=i; j--){ // 자리를 확보하기 위해 한칸씩 밀기
+						off= *(uint16_t *)((uint64_t)offset_array + j * sizeof(uint16_t));	// 0 to 1, 1 to 2
+						uint16_t* offset_move = (uint16_t*)((uint64_t)offset_array + (j+1) * sizeof(uint16_t));
+						*offset_move = off;
+					}
+					offset_ptr = (uint16_t*)((uint64_t)offset_array + i * sizeof(uint16_t)); // 0 자리 확보
+
+				}else{ // 중간 또는 끝에 들어가야할 때
+
+					for(int j = metadata-1; j>i; j--){ // i번째 바로 뒤에 들어가야하기 때문에 j>i로 범위 설정, 자리를 확보하기 위해 한칸씩 밀기
+						off= *(uint16_t *)((uint64_t)offset_array + j * sizeof(uint16_t));	
+						uint16_t* offset_move = (uint16_t*)((uint64_t)offset_array + (j+1) * sizeof(uint16_t));
+						*offset_move = off;
+					}
+
+					offset_ptr = (uint16_t*)((uint64_t)offset_array + (i+1) * sizeof(uint16_t)); // i번째 바로 뒤
+				}
+
+				*offset_ptr = record_off; // record_offset (시작번지 저장)
+
+				break;
+			}
 		}
 	}	
-	
-	//printf("%d %d %d\n", (uint64_t)offset_array + metadata * sizeof(uint16_t), metadata * sizeof(uint16_t), *offset_ptr);
-	//printf("size확인 : %d\n\n", *(uint16_t*)((uint64_t)this + (uint64_t)record_off));
-	//size가 0이 나온다 -> g
-
 
 	hdr.set_num_data(metadata + 1); 
-	hdr.set_data_region_off(record_off-1);
+	hdr.set_data_region_off(record_off-1); //region_off는 freelist 마지막 번지이므로 -1
 
 	print();
 
@@ -159,7 +154,38 @@ bool page::insert(char *key,uint64_t val){
 
 page* page::split(char *key, uint64_t val, char** parent_key){
 	// Please implement this function in project 3.
-	page *new_page;
+	
+	// 새로운 노드에 절반의 엔트리를 복사
+	page *new_page = new page(get_type()); 
+	int num_data = hdr.get_num_data(); 
+	void *offset_array=hdr.get_offset_array(); 
+	void *stored_key=nullptr; 
+	uint16_t off=0; 
+	uint64_t stored_val=0; 
+	void *data_region=nullptr; 
+
+	int medium = (num_data / 2) + 1;
+
+	for(int i=medium; i<num_data; i++){ 
+		off= *(uint16_t *)((uint64_t)offset_array+i*2);	
+		data_region = (void *)((uint64_t)this+(uint64_t)off); 
+		stored_key = get_key(data_region); 
+		stored_val= get_val((void *)stored_key); 
+		new_page->insert((char*)stored_key,stored_val); 
+	}	
+	new_page->set_leftmost_ptr(get_leftmost_ptr()); 
+	hdr.set_offset_array((void*)((uint64_t)this+sizeof(slot_header))); //page + header
+
+	// 기존 노드의 절반을 삭제
+	defrag();
+
+	// parent_key에 medium 값 주소를 추가한다
+	off = *(uint16_t *)((uint64_t)offset_array + medium * 2);
+    data_region = (void *)((uint64_t)this + (uint64_t)off);
+    *parent_key = get_key(data_region);
+	//
+
+	// 새로 생긴 노드의 주소를 리턴
 	return new_page;
 }
 
@@ -167,18 +193,16 @@ bool page::is_full(uint64_t inserted_record_size) {
 	// Please implement this function in project 2.
 
 	uint64_t total_space = PAGE_SIZE; // 1부터 256까지의 방
-	//printf("***\n");
-	uint64_t record_size = PAGE_SIZE-1-sizeof(page*) - hdr.get_data_region_off();
+	uint64_t record_size = PAGE_SIZE - 1 - sizeof(page*) - hdr.get_data_region_off();
+	// leftmost - offset, region_off이 freelist 마지막 번지를 가리키고 있으므로 -1을 해줘야한다
 
 	uint64_t used_space = sizeof(slot_header) + sizeof(page*) + record_size + (hdr.get_num_data() * 2);
-	// header + page* + record + offset배열
-	//printf("used space : %lu\n", record_size);
-	//printf("***\n");
+	// page class 변수 : header + leftmost + recordsize + offset개수
 
-	if ((total_space - used_space) < inserted_record_size + 2)
+	if ((total_space - used_space) < inserted_record_size + 2) // 남은 공간이 레코드 사이즈 + 2(offset 주소크기) 보다 작다면 full하다는 의미
 		return true;
 
-	return false;
+	return false; // 남은 공간이 레코드 사이즈 + 2(offset 주소)와 같거나 크다면 full하지 않다는 의미
 }
 
 

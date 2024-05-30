@@ -19,6 +19,14 @@ int main(){
 		val*=cnt;
 		p->insert(key, val);
 	}
+	for(int j=0; j<STRING_LEN-1; j++){
+			key[j] = 'b';
+	}
+	key[STRING_LEN-1]='\0';
+	cnt++;
+	val*=cnt;
+	p->insert(key, val);
+	
 
 	val = 100;
 	cnt = 0;
