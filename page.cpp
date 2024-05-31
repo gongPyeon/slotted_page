@@ -67,13 +67,24 @@ uint64_t page::find(char *key){
 		if (strcmp(stored_key, key) == 0) { 
 			return stored_val; 
 		}else if(strcmp(stored_key, key) > 0){ // 찾고자 하는 키보다 큰 키를 만날 경우
-			if(this->get_type() == INTERNAL){ // INTERNAL
-				child_addr = get_val((void*)pre_key); // child 주소를 알아낸다
+			if(get_type() == INTERNAL){ // INTERNAL
+				if(pre_key==NULL){
+					child_addr = (uint64_t)get_leftmost_ptr(); // 맨 앞에 들어가야할 경우
+				}else{
+					child_addr = get_val((void*)pre_key); // child 주소를 알아낸다
+				}
+				
 				return child_addr;
 			}
 		}
-
 		pre_key = get_key(data_region); // 이전 키 저장
+	}
+
+	if(strcmp(stored_key, key) < 0){ // 마지막에 들어가야할 경우
+		if(this->get_type() == INTERNAL){
+			child_addr = get_val((void*)stored_key); // child 주소를 알아낸다
+			return child_addr;
+		}
 	}
 
 	return 0;
@@ -162,8 +173,6 @@ bool page::insert(char *key, uint64_t val){
 
 page* page::split(char *key, uint64_t val, char** parent_key){
 	// Please implement this function in project 3.
-	
-	if(!this->insert(key, val)) return NULL; // key, val insert 후 분할
 
 	// 새로운 노드에 절반의 엔트리를 복사
 	page *new_page = new page(get_type()); 
@@ -172,9 +181,9 @@ page* page::split(char *key, uint64_t val, char** parent_key){
 	void *stored_key=nullptr; 
 	uint16_t off=0; 
 	uint64_t stored_val=0; 
-	void *data_region=nullptr; 
+	void *data_region=nullptr;
 
-	int medium = (num_data / 2) + 1;
+	int medium = (num_data / 2);
 
 	for(int i=medium; i<num_data; i++){ 
 		off= *(uint16_t *)((uint64_t)offset_array+i*2);	
@@ -182,19 +191,21 @@ page* page::split(char *key, uint64_t val, char** parent_key){
 		stored_key = get_key(data_region); 
 		stored_val= get_val((void *)stored_key); 
 		new_page->insert((char*)stored_key,stored_val); 
-	}	
+	}
 	new_page->set_leftmost_ptr(get_leftmost_ptr()); 
 	hdr.set_offset_array((void*)((uint64_t)this+sizeof(slot_header))); //page + header
-
+	
 	// 기존 노드의 절반을 삭제
 	defrag();
 
 	// parent_key에 medium번째 key를 추가한다
-	off = *(uint16_t *)((uint64_t)offset_array + medium * 2);
-    data_region = (void *)((uint64_t)this + (uint64_t)off);
-    *parent_key = get_key(data_region);
+	off = *(uint16_t *)((uint64_t)offset_array);
+    data_region = (void *)((uint64_t)new_page + (uint64_t)off);
+	*parent_key = get_key(data_region);
+	printf("parentKey: %s\n", *parent_key);
 
-	print();
+
+	//print();
 	// 새로 생긴 노드의 주소를 리턴
 	return new_page;
 }
